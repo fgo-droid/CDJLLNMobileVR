@@ -53,6 +53,12 @@
 
       <a-sky color="#030712"></a-sky>
       <a-entity id="stars"></a-entity>
+      <a-entity id="shooting-star" visible="false">
+        <a-sphere radius=".13"
+          material="color: #ffffff; emissive: #ffffff; emissiveIntensity: 3; shader: standard"></a-sphere>
+        <a-entity line="start: 0 0 0; end: -4 1.55 0; color: #dbeafe"></a-entity>
+        <a-entity line="start: -.15 .06 0; end: -2.6 1.02 0; color: #ffffff"></a-entity>
+      </a-entity>
 
       <a-sphere position="-8 12 -18" radius="1.8"
         material="color: #fff8d5; emissive: #fff1a8; emissiveIntensity: 1.5; roughness: 1"></a-sphere>
@@ -74,6 +80,7 @@
       const scene = document.querySelector('#scene');
       const forest = document.querySelector('#forest');
       const stars = document.querySelector('#stars');
+      const shootingStar = document.querySelector('#shooting-star');
       const intro = document.querySelector('#intro');
       const status = document.querySelector('#status');
       const button = document.querySelector('#enter-vr');
@@ -140,6 +147,39 @@
         star.setAttribute('material', 'color: #ffffff; emissive: #dbeafe; emissiveIntensity: 2; shader: standard');
         stars.appendChild(star);
       }
+
+      // Une étoile filante apparaît à un intervalle aléatoire entre 8 et 20 secondes.
+      function scheduleShootingStar(firstPass = false) {
+        const delay = firstPass ? 4500 : 8000 + Math.random() * 12000;
+        window.setTimeout(launchShootingStar, delay);
+      }
+
+      function launchShootingStar() {
+        const fromLeft = Math.random() > .5;
+        const startX = fromLeft ? -12 : 12;
+        const endX = -startX;
+        const startY = 12 + Math.random() * 5;
+        const endY = startY - 7;
+        const z = -18 - Math.random() * 5;
+
+        shootingStar.removeAttribute('animation__flight');
+        shootingStar.setAttribute('scale', fromLeft ? '1 1 1' : '-1 1 1');
+        shootingStar.setAttribute('position', `${startX} ${startY} ${z}`);
+        shootingStar.setAttribute('visible', true);
+        shootingStar.setAttribute('animation__flight', {
+          property: 'position',
+          from: `${startX} ${startY} ${z}`,
+          to: `${endX} ${endY} ${z}`,
+          dur: 1100 + Math.random() * 350,
+          easing: 'easeInQuad'
+        });
+      }
+
+      shootingStar.addEventListener('animationcomplete__flight', () => {
+        shootingStar.setAttribute('visible', false);
+        scheduleShootingStar();
+      });
+      scheduleShootingStar(true);
 
       async function requestOrientationPermission() {
         if (typeof DeviceOrientationEvent !== 'undefined' &&
