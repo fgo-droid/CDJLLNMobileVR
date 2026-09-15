@@ -1,40 +1,112 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="fr">
   <head>
     <meta charset="utf-8">
-    <title>LEGO VR - CoderDojo</title>
-    <!-- Chargement du moteur A-Frame -->
-    <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+    <meta name="theme-color" content="#111827">
+    <title>LEGO VR — CoderDojo</title>
+    <meta name="description" content="Une petite scène LEGO en réalité virtuelle pour casque passif et smartphone.">
+    <script src="https://aframe.io/releases/1.8.0/aframe.min.js"></script>
+    <style>
+      :root { color-scheme: dark; font-family: system-ui, sans-serif; }
+      body { margin: 0; background: #111827; }
+      .panel {
+        position: fixed; z-index: 10; left: 50%; bottom: max(22px, env(safe-area-inset-bottom));
+        width: min(88vw, 420px); transform: translateX(-50%); padding: 16px;
+        border: 1px solid rgba(255,255,255,.18); border-radius: 18px;
+        color: white; background: rgba(17,24,39,.88); backdrop-filter: blur(12px);
+        box-shadow: 0 12px 40px rgba(0,0,0,.35); text-align: center;
+      }
+      .panel h1 { margin: 0 0 6px; font-size: 1.15rem; }
+      .panel p { margin: 0 0 12px; color: #d1d5db; font-size: .9rem; line-height: 1.35; }
+      button {
+        width: 100%; min-height: 48px; border: 0; border-radius: 12px; cursor: pointer;
+        color: white; background: #dc2626; font: 700 1rem system-ui, sans-serif;
+      }
+      button:active { transform: scale(.98); }
+      .status { min-height: 1.2em; margin-top: 8px; color: #fbbf24; font-size: .78rem; }
+      .is-hidden { display: none; }
+    </style>
   </head>
   <body>
-    <a-scene>
-      <!-- Ciel gris clair -->
-      <a-sky color="#ECECEC"></a-sky>
+    <section class="panel" id="intro" aria-label="Instructions VR">
+      <h1>LEGO VR</h1>
+      <p>Tourne le téléphone en paysage, touche le bouton, puis glisse-le dans le casque passif.</p>
+      <button id="enter-vr" type="button">🥽 Mode casque VR</button>
+      <div class="status" id="status" role="status"></div>
+    </section>
 
-      <!-- Sol pour situer l'espace -->
-      <a-plane position="0 0 -4" rotation="-90 0 0" width="10" height="10" color="#7BC8A4"></a-plane>
+    <a-scene
+      id="scene"
+      background="color: #dbeafe"
+      renderer="antialias: true; colorManagement: true; physicallyCorrectLights: true"
+      vr-mode-ui="enabled: false"
+      webxr="optionalFeatures: local-floor; referenceSpaceType: local-floor"
+    >
+      <a-assets>
+        <a-mixin id="red-plastic" material="color: #d71920; roughness: 0.28; metalness: 0.04"></a-mixin>
+      </a-assets>
 
-      <!-- Brique LEGO 2x4 Rouge -->
-      <a-entity id="lego-brick" position="0 1 -3" rotation="0 25 0">
-        <!-- Corps principal -->
-        <a-box 
-          width="3.2" height="0.96" depth="1.6" 
-          color="#D11A2A" 
-          roughness="0.3" metalness="0.1">
-        </a-box>
+      <a-entity light="type: hemisphere; color: #ffffff; groundColor: #78909c; intensity: 1.5"></a-entity>
+      <a-entity light="type: directional; color: #fff4dc; intensity: 2" position="-2 5 1"></a-entity>
 
-        <!-- Rangée avant de 4 tenons -->
-        <a-cylinder position="-1.2 0.58  0.4" radius="0.25" height="0.2" color="#D11A2A" roughness="0.3"></a-cylinder>
-        <a-cylinder position="-0.4 0.58  0.4" radius="0.25" height="0.2" color="#D11A2A" roughness="0.3"></a-cylinder>
-        <a-cylinder position=" 0.4 0.58  0.4" radius="0.25" height="0.2" color="#D11A2A" roughness="0.3"></a-cylinder>
-        <a-cylinder position=" 1.2 0.58  0.4" radius="0.25" height="0.2" color="#D11A2A" roughness="0.3"></a-cylinder>
+      <a-plane position="0 0 -4" rotation="-90 0 0" width="14" height="14" color="#62b58b" shadow="receive: true"></a-plane>
+      <a-circle position="0 0.012 -3.2" rotation="-90 0 0" radius="2.25" color="#499673"></a-circle>
 
-        <!-- Rangée arrière de 4 tenons -->
-        <a-cylinder position="-1.2 0.58 -0.4" radius="0.25" height="0.2" color="#D11A2A" roughness="0.3"></a-cylinder>
-        <a-cylinder position="-0.4 0.58 -0.4" radius="0.25" height="0.2" color="#D11A2A" roughness="0.3"></a-cylinder>
-        <a-cylinder position=" 0.4 0.58 -0.4" radius="0.25" height="0.2" color="#D11A2A" roughness="0.3"></a-cylinder>
-        <a-cylinder position=" 1.2 0.58 -0.4" radius="0.25" height="0.2" color="#D11A2A" roughness="0.3"></a-cylinder>
+      <a-entity id="lego-brick" position="0 1.35 -3.4" rotation="0 -20 0"
+        animation="property: rotation; to: 0 340 0; dur: 18000; loop: true; easing: linear">
+        <a-box width="3.2" height="0.96" depth="1.6" mixin="red-plastic" shadow="cast: true"></a-box>
+
+        <a-cylinder position="-1.2 0.58  0.4" radius="0.25" height="0.20" mixin="red-plastic" shadow="cast: true"></a-cylinder>
+        <a-cylinder position="-0.4 0.58  0.4" radius="0.25" height="0.20" mixin="red-plastic" shadow="cast: true"></a-cylinder>
+        <a-cylinder position=" 0.4 0.58  0.4" radius="0.25" height="0.20" mixin="red-plastic" shadow="cast: true"></a-cylinder>
+        <a-cylinder position=" 1.2 0.58  0.4" radius="0.25" height="0.20" mixin="red-plastic" shadow="cast: true"></a-cylinder>
+        <a-cylinder position="-1.2 0.58 -0.4" radius="0.25" height="0.20" mixin="red-plastic" shadow="cast: true"></a-cylinder>
+        <a-cylinder position="-0.4 0.58 -0.4" radius="0.25" height="0.20" mixin="red-plastic" shadow="cast: true"></a-cylinder>
+        <a-cylinder position=" 0.4 0.58 -0.4" radius="0.25" height="0.20" mixin="red-plastic" shadow="cast: true"></a-cylinder>
+        <a-cylinder position=" 1.2 0.58 -0.4" radius="0.25" height="0.20" mixin="red-plastic" shadow="cast: true"></a-cylinder>
+      </a-entity>
+
+      <a-entity position="0 1.6 0">
+        <a-camera wasd-controls-enabled="false" look-controls="magicWindowTrackingEnabled: true"></a-camera>
       </a-entity>
     </a-scene>
+
+    <script>
+      const scene = document.querySelector('#scene');
+      const intro = document.querySelector('#intro');
+      const status = document.querySelector('#status');
+      const button = document.querySelector('#enter-vr');
+
+      async function requestOrientationPermission() {
+        if (typeof DeviceOrientationEvent !== 'undefined' &&
+            typeof DeviceOrientationEvent.requestPermission === 'function') {
+          const permission = await DeviceOrientationEvent.requestPermission();
+          if (permission !== 'granted') throw new Error('Accès aux mouvements refusé.');
+        }
+      }
+
+      button.addEventListener('click', async () => {
+        button.disabled = true;
+        status.textContent = 'Activation du casque…';
+        try {
+          await requestOrientationPermission();
+          if (screen.orientation?.lock) {
+            await screen.orientation.lock('landscape').catch(() => {});
+          }
+          await scene.enterVR();
+        } catch (error) {
+          status.textContent = error.message || 'Mode VR indisponible dans ce navigateur.';
+          button.disabled = false;
+        }
+      });
+
+      scene.addEventListener('enter-vr', () => intro.classList.add('is-hidden'));
+      scene.addEventListener('exit-vr', () => {
+        intro.classList.remove('is-hidden');
+        button.disabled = false;
+        status.textContent = '';
+      });
+    </script>
   </body>
 </html>
