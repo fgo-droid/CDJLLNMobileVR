@@ -1,213 +1,152 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="fr">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-    <meta name="theme-color" content="#030712">
-    <title>Forêt étoilée VR — CoderDojo</title>
-    <meta name="description" content="Une forêt nocturne de sapins coniques à explorer avec un smartphone et un casque VR passif.">
-    <script src="https://aframe.io/releases/1.8.0/aframe.min.js"></script>
-    <style>
-      :root { color-scheme: dark; font-family: system-ui, sans-serif; }
-      body { margin: 0; background: #030712; }
-      .panel {
-        position: fixed; z-index: 10; left: 50%; bottom: max(22px, env(safe-area-inset-bottom));
-        width: min(88vw, 420px); transform: translateX(-50%); padding: 16px;
-        border: 1px solid rgba(191,219,254,.22); border-radius: 18px;
-        color: #f8fafc; background: rgba(3,7,18,.86); backdrop-filter: blur(12px);
-        box-shadow: 0 14px 45px rgba(0,0,0,.5); text-align: center;
-      }
-      .panel h1 { margin: 0 0 6px; font: 700 1.15rem Georgia, serif; letter-spacing: .03em; }
-      .panel p { margin: 0 0 12px; color: #cbd5e1; font-size: .9rem; line-height: 1.4; }
-      button {
-        width: 100%; min-height: 48px; border: 1px solid #93c5fd; border-radius: 12px;
-        color: #07111f; background: #bfdbfe; cursor: pointer; font: 750 1rem system-ui, sans-serif;
-      }
-      button:active { transform: scale(.98); }
-      button:disabled { opacity: .6; }
-      .status { min-height: 1.2em; margin-top: 8px; color: #fde68a; font-size: .78rem; }
-      .is-hidden { display: none; }
-    </style>
-  </head>
-  <body>
-    <section class="panel" id="intro" aria-label="Instructions VR">
-      <h1>La forêt étoilée</h1>
-      <p>Tourne le téléphone en paysage, entre dans la forêt, puis place-le dans le casque passif.</p>
-      <button id="enter-vr" type="button">🥽 Entrer en VR</button>
-      <div class="status" id="status" role="status"></div>
-    </section>
+<head>
+  <meta charset="utf-8">
+  <title>Jumeau Numérique - Bras Robotique 4 DOF</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <!-- A-Frame library -->
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
 
-    <a-scene
-      id="scene"
-      background="color: #030712"
-      fog="type: exponential; color: #071426; density: 0.022"
-      renderer="antialias: true; colorManagement: true; physicallyCorrectLights: true"
-      vr-mode-ui="enabled: false"
-      webxr="optionalFeatures: local-floor; referenceSpaceType: local-floor"
-    >
-      <a-assets>
-        <a-mixin id="needles-dark" material="color: #0b5d3b; roughness: .9"></a-mixin>
-        <a-mixin id="needles-mid" material="color: #14804f; roughness: .85"></a-mixin>
-        <a-mixin id="needles-light" material="color: #209c60; roughness: .8"></a-mixin>
-      </a-assets>
+  <script>
+    // Composant pour générer la texture de sécurité jaune/noire (rayures obliques)
+    AFRAME.registerComponent('hazard-texture', {
+      init: function () {
+        const canvas = document.createElement('canvas');
+        canvas.width = 128;
+        canvas.height = 128;
+        const ctx = canvas.getContext('2d');
 
-      <a-sky color="#030712"></a-sky>
-      <a-entity id="stars"></a-entity>
-      <a-entity id="shooting-star" visible="false">
-        <a-sphere radius=".13"
-          material="color: #ffffff; emissive: #ffffff; emissiveIntensity: 3; shader: standard"></a-sphere>
-        <a-entity line="start: 0 0 0; end: -4 1.55 0; color: #dbeafe"></a-entity>
-        <a-entity line="start: -.15 .06 0; end: -2.6 1.02 0; color: #ffffff"></a-entity>
-      </a-entity>
+        // Fond jaune de sécurité
+        ctx.fillStyle = '#f1c40f';
+        ctx.fillRect(0, 0, 128, 128);
 
-      <a-sphere position="-8 12 -18" radius="1.8"
-        material="color: #fff8d5; emissive: #fff1a8; emissiveIntensity: 1.5; roughness: 1"></a-sphere>
-      <a-entity light="type: directional; color: #bcd7ff; intensity: 1.4" position="-8 12 -18"></a-entity>
-      <a-entity light="type: hemisphere; color: #6b91c8; groundColor: #07150f; intensity: .65"></a-entity>
+        // Rayures noires inclinées à 45°
+        ctx.fillStyle = '#1c1c1c';
+        ctx.lineWidth = 24;
+        for (let i = -128; i < 256; i += 48) {
+          ctx.beginPath();
+          ctx.moveTo(i, 0);
+          ctx.lineTo(i + 128, 128);
+          ctx.stroke();
+        }
 
-      <a-circle position="0 -.02 0" rotation="-90 0 0" radius="28"
-        material="color: #10281f; roughness: 1"></a-circle>
-      <a-plane position="0 0 -8" rotation="-90 0 0" width="3.2" height="18"
-        material="color: #203b32; roughness: 1"></a-plane>
-      <a-entity id="forest"></a-entity>
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.repeat.set(4, 1);
 
-      <a-entity position="0 1.6 0">
-        <a-camera wasd-controls-enabled="false" look-controls="magicWindowTrackingEnabled: true"></a-camera>
-      </a-entity>
-    </a-scene>
-
-    <script>
-      const scene = document.querySelector('#scene');
-      const forest = document.querySelector('#forest');
-      const stars = document.querySelector('#stars');
-      const shootingStar = document.querySelector('#shooting-star');
-      const intro = document.querySelector('#intro');
-      const status = document.querySelector('#status');
-      const button = document.querySelector('#enter-vr');
-
-      // Générateur pseudo-aléatoire déterministe : la forêt reste identique à chaque visite.
-      let seed = 1986;
-      function random() {
-        seed = (seed * 1664525 + 1013904223) >>> 0;
-        return seed / 4294967296;
-      }
-
-      function addTree(x, z, scale) {
-        const tree = document.createElement('a-entity');
-        tree.setAttribute('position', `${x.toFixed(2)} 0 ${z.toFixed(2)}`);
-        tree.setAttribute('rotation', `0 ${(random() * 360).toFixed(0)} 0`);
-        tree.setAttribute('scale', `${scale} ${scale} ${scale}`);
-
-        const trunk = document.createElement('a-cylinder');
-        trunk.setAttribute('position', '0 .75 0');
-        trunk.setAttribute('radius', '.18');
-        trunk.setAttribute('height', '1.5');
-        trunk.setAttribute('material', 'color: #5b3826; roughness: 1');
-        tree.appendChild(trunk);
-
-        [
-          { y: 1.25, r: 1.15, h: 1.65, mixin: 'needles-dark' },
-          { y: 2.05, r: .88, h: 1.55, mixin: 'needles-mid' },
-          { y: 2.82, r: .58, h: 1.45, mixin: 'needles-light' }
-        ].forEach(layer => {
-          const cone = document.createElement('a-cone');
-          cone.setAttribute('position', `0 ${layer.y} 0`);
-          cone.setAttribute('radius-bottom', layer.r);
-          cone.setAttribute('radius-top', '0');
-          cone.setAttribute('height', layer.h);
-          cone.setAttribute('segments-radial', '10');
-          cone.setAttribute('mixin', layer.mixin);
-          tree.appendChild(cone);
-        });
-        forest.appendChild(tree);
-      }
-
-      // Deux bandes latérales gardent une clairière devant le visiteur.
-      for (let i = 0; i < 38; i++) {
-        const side = i % 2 === 0 ? -1 : 1;
-        const z = -2.8 - random() * 21;
-        const x = side * (2.4 + random() * 8.5);
-        addTree(x, z, .65 + random() * 1.25);
-      }
-      // Quelques arbres derrière donnent réellement l'impression d'être entouré.
-      for (let i = 0; i < 9; i++) {
-        const angle = random() * Math.PI;
-        const radius = 6 + random() * 7;
-        addTree(Math.cos(angle) * radius, 3 + Math.sin(angle) * radius, .65 + random() * .85);
-      }
-
-      // Petites sphères émissives distribuées sur la moitié supérieure du ciel.
-      for (let i = 0; i < 105; i++) {
-        const theta = random() * Math.PI * 2;
-        const phi = .12 + random() * 1.25;
-        const radius = 29;
-        const star = document.createElement('a-sphere');
-        star.setAttribute('position', `${Math.cos(theta) * Math.sin(phi) * radius} ${Math.cos(phi) * radius} ${Math.sin(theta) * Math.sin(phi) * radius}`);
-        star.setAttribute('radius', random() > .88 ? '.07' : '.035');
-        star.setAttribute('material', 'color: #ffffff; emissive: #dbeafe; emissiveIntensity: 2; shader: standard');
-        stars.appendChild(star);
-      }
-
-      // Une étoile filante apparaît à un intervalle aléatoire entre 8 et 20 secondes.
-      function scheduleShootingStar(firstPass = false) {
-        const delay = firstPass ? 4500 : 8000 + Math.random() * 12000;
-        window.setTimeout(launchShootingStar, delay);
-      }
-
-      function launchShootingStar() {
-        const fromLeft = Math.random() > .5;
-        const startX = fromLeft ? -12 : 12;
-        const endX = -startX;
-        const startY = 12 + Math.random() * 5;
-        const endY = startY - 7;
-        const z = -18 - Math.random() * 5;
-
-        shootingStar.removeAttribute('animation__flight');
-        shootingStar.setAttribute('scale', fromLeft ? '1 1 1' : '-1 1 1');
-        shootingStar.setAttribute('position', `${startX} ${startY} ${z}`);
-        shootingStar.setAttribute('visible', true);
-        shootingStar.setAttribute('animation__flight', {
-          property: 'position',
-          from: `${startX} ${startY} ${z}`,
-          to: `${endX} ${endY} ${z}`,
-          dur: 1100 + Math.random() * 350,
-          easing: 'easeInQuad'
-        });
-      }
-
-      shootingStar.addEventListener('animationcomplete__flight', () => {
-        shootingStar.setAttribute('visible', false);
-        scheduleShootingStar();
-      });
-      scheduleShootingStar(true);
-
-      async function requestOrientationPermission() {
-        if (typeof DeviceOrientationEvent !== 'undefined' &&
-            typeof DeviceOrientationEvent.requestPermission === 'function') {
-          const permission = await DeviceOrientationEvent.requestPermission();
-          if (permission !== 'granted') throw new Error('Accès aux mouvements refusé.');
+        const mesh = this.el.getObject3D('mesh');
+        if (mesh) {
+          mesh.material.map = texture;
+          mesh.material.needsUpdate = true;
         }
       }
+    });
 
-      button.addEventListener('click', async () => {
-        button.disabled = true;
-        status.textContent = 'Ouverture de la forêt…';
-        try {
-          await requestOrientationPermission();
-          if (screen.orientation?.lock) await screen.orientation.lock('landscape').catch(() => {});
-          await scene.enterVR();
-        } catch (error) {
-          status.textContent = error.message || 'Mode VR indisponible dans ce navigateur.';
-          button.disabled = false;
-        }
-      });
+    // Composant d'animation démo du bras (simulation cinématique directe)
+    AFRAME.registerComponent('robot-arm-demo', {
+      init: function () {
+        this.baseJoint = document.querySelector('#joint-base');
+        this.shoulderJoint = document.querySelector('#joint-shoulder');
+        this.elbowJoint = document.querySelector('#joint-elbow');
+        this.wristJoint = document.querySelector('#joint-wrist');
+        this.fingerLeft = document.querySelector('#finger-left');
+        this.fingerRight = document.querySelector('#finger-right');
+      },
+      tick: function (time) {
+        const t = time * 0.001; // Temps en secondes
 
-      scene.addEventListener('enter-vr', () => intro.classList.add('is-hidden'));
-      scene.addEventListener('exit-vr', () => {
-        intro.classList.remove('is-hidden');
-        button.disabled = false;
-        status.textContent = '';
-      });
-    </script>
-  </body>
+        // Rotation base : -45° à +45°
+        const baseAngle = Math.sin(t * 0.8) * 45;
+        this.baseJoint.setAttribute('rotation', `0 ${baseAngle} 0`);
+
+        // Articulation épaule (pitch) : -20° à +25°
+        const shoulderAngle = Math.sin(t * 1.2) * 25;
+        this.shoulderJoint.setAttribute('rotation', `${shoulderAngle} 0 0`);
+
+        // Articulation coude (pitch) : -30° à +35°
+        const elbowAngle = Math.cos(t * 1.1) * 35;
+        this.elbowJoint.setAttribute('rotation', `${elbowAngle} 0 0`);
+
+        // Poignet : rotation axiale
+        const wristAngle = Math.sin(t * 2.0) * 40;
+        this.wristJoint.setAttribute('rotation', `0 0 ${wristAngle}`);
+
+        // Pince : ouverture / fermeture cyclique
+        const gripOffset = 0.04 + Math.sin(t * 1.5) * 0.025;
+        this.fingerLeft.setAttribute('position', `${-gripOffset} 0.08 0`);
+        this.fingerRight.setAttribute('position', `${gripOffset} 0.08 0`);
+      }
+    });
+  </script>
+</head>
+<body style="margin: 0; overflow: hidden;">
+  <a-scene robot-arm-demo background="color: #1e272c">
+    
+    <!-- Caméra utilisateur (positionnée à hauteur d'yeux en retrait) -->
+    <a-entity position="0 1.2 1.8">
+      <a-camera look-controls="pointerLockEnabled: false"></a-camera>
+    </a-entity>
+
+    <!-- Éclairages de scène -->
+    <a-entity light="type: ambient; color: #777"></a-entity>
+    <a-entity light="type: directional; color: #fff; intensity: 0.9" position="2 4 3"></a-entity>
+
+    <!-- ==================== SURFACE INDUSTRIELLE ==================== -->
+    <a-entity position="0 0 0">
+      <!-- Dalle principale grise -->
+      <a-box position="0 0.45 0" width="1.6" height="0.9" depth="1.6" color="#3a4045" roughness="0.8"></a-box>
+      <!-- Plateau de travail supérieur -->
+      <a-box position="0 0.905 0" width="1.4" height="0.01" depth="1.4" color="#2c3136" roughness="0.6"></a-box>
+
+      <!-- Lignes de sécurité hachurées jaune/noir (4 côtés) -->
+      <a-plane position="0 0.911 0.75" rotation="-90 0 0" width="1.6" height="0.1" hazard-texture></a-plane>
+      <a-plane position="0 0.911 -0.75" rotation="-90 180 0" width="1.6" height="0.1" hazard-texture></a-plane>
+      <a-plane position="-0.75 0.911 0" rotation="-90 90 0" width="1.6" height="0.1" hazard-texture></a-plane>
+      <a-plane position="0.75 0.911 0" rotation="-90 -90 0" width="1.6" height="0.1" hazard-texture></a-plane>
+    </a-entity>
+
+    <!-- ==================== BRAS ROBOTIQUE BLANC (4 DOF) ==================== -->
+    <!-- Positionné sur la table à Y=0.91 -->
+    <a-entity position="0 0.91 0">
+
+      <!-- AXE 1 : BASE (Rotation Y) -->
+      <a-entity id="joint-base" position="0 0 0">
+        <!-- Embase fixe & moteur azimut -->
+        <a-cylinder radius="0.14" height="0.04" position="0 0.02 0" color="#e0e0e0" roughness="0.3"></a-cylinder>
+        <a-cylinder radius="0.09" height="0.08" position="0 0.08 0" color="#ffffff" roughness="0.25"></a-cylinder>
+
+        <!-- AXE 2 : ÉPAULE (Pivot X à Y=0.12) -->
+        <a-entity id="joint-shoulder" position="0 0.12 0">
+          <a-sphere radius="0.06" color="#d5d8dc"></a-sphere>
+          <!-- Premier membre (Humerus) -->
+          <a-box width="0.06" height="0.4" depth="0.06" position="0 0.2 0" color="#ffffff" roughness="0.25"></a-box>
+
+          <!-- AXE 3 : COUDE (Pivot X à Y=0.4 du membre précédent) -->
+          <a-entity id="joint-elbow" position="0 0.4 0">
+            <a-sphere radius="0.05" color="#d5d8dc"></a-sphere>
+            <!-- Deuxième membre (Avant-bras) -->
+            <a-box width="0.05" height="0.35" depth="0.05" position="0 0.175 0" color="#ffffff" roughness="0.25"></a-box>
+
+            <!-- AXE 4 : POIGNET & PINCE (Pivot Z ou Y) -->
+            <a-entity id="joint-wrist" position="0 0.35 0">
+              <a-cylinder radius="0.035" height="0.04" position="0 0.02 0" color="#bdc3c7"></a-cylinder>
+              <a-box width="0.1" height="0.02" depth="0.03" position="0 0.05 0" color="#ffffff"></a-box>
+
+              <!-- Mâchoires de la pince (ouverture symétrique) -->
+              <a-box id="finger-left" width="0.015" height="0.07" depth="0.025" position="-0.04 0.08 0" color="#e0e0e0"></a-box>
+              <a-box id="finger-right" width="0.015" height="0.07" depth="0.025" position="0.04 0.08 0" color="#e0e0e0"></a-box>
+            </a-entity>
+
+          </a-entity> <!-- Fin Coude -->
+        </a-entity> <!-- Fin Épaule -->
+      </a-entity> <!-- Fin Base -->
+
+    </a-entity>
+
+    <!-- Sol ambiant -->
+    <a-plane position="0 0 0" rotation="-90 0 0" width="30" height="30" color="#111417" roughness="0.9"></a-plane>
+
+  </a-scene>
+</body>
 </html>
