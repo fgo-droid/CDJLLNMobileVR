@@ -4,36 +4,39 @@
   <meta charset="utf-8">
   <title>Jumeau Numérique - Bras Robotique 4 DOF</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <!-- A-Frame library -->
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
 
   <script>
-    // Composant pour générer la texture de sécurité jaune/noire (rayures obliques)
+    // Texture de sécurité industrielle réaliste (larges bandes à 45°)
     AFRAME.registerComponent('hazard-texture', {
       init: function () {
         const canvas = document.createElement('canvas');
-        canvas.width = 128;
-        canvas.height = 128;
+        canvas.width = 256;
+        canvas.height = 256;
         const ctx = canvas.getContext('2d');
 
-        // Fond jaune de sécurité
-        ctx.fillStyle = '#f1c40f';
-        ctx.fillRect(0, 0, 128, 128);
+        // Fond jaune de sécurité (RAL 1023)
+        ctx.fillStyle = '#f39c12';
+        ctx.fillRect(0, 0, 256, 256);
 
-        // Rayures noires inclinées à 45°
-        ctx.fillStyle = '#1c1c1c';
-        ctx.lineWidth = 24;
-        for (let i = -128; i < 256; i += 48) {
+        // Larges bandes noires inclinées à 45°
+        ctx.strokeStyle = '#1a1a1a';
+        ctx.lineWidth = 42;
+        for (let offset = -256; offset < 512; offset += 84) {
           ctx.beginPath();
-          ctx.moveTo(i, 0);
-          ctx.lineTo(i + 128, 128);
+          ctx.moveTo(offset, 0);
+          ctx.lineTo(offset + 256, 256);
           ctx.stroke();
         }
+
+        // Liseré noir extérieur de délimitation
+        ctx.lineWidth = 6;
+        ctx.strokeRect(0, 0, 256, 256);
 
         const texture = new THREE.CanvasTexture(canvas);
         texture.wrapS = THREE.RepeatWrapping;
         texture.wrapT = THREE.RepeatWrapping;
-        texture.repeat.set(4, 1);
+        texture.repeat.set(6, 1);
 
         const mesh = this.el.getObject3D('mesh');
         if (mesh) {
@@ -43,109 +46,127 @@
       }
     });
 
-    // Composant d'animation démo du bras (simulation cinématique directe)
+    // Animation de démonstration cinématique
     AFRAME.registerComponent('robot-arm-demo', {
       init: function () {
         this.baseJoint = document.querySelector('#joint-base');
         this.shoulderJoint = document.querySelector('#joint-shoulder');
         this.elbowJoint = document.querySelector('#joint-elbow');
-        this.wristJoint = document.querySelector('#joint-wrist');
-        this.fingerLeft = document.querySelector('#finger-left');
-        this.fingerRight = document.querySelector('#finger-right');
+        this.fingerServo = document.querySelector('#finger-servo-axis');
+        this.fingerLeft = document.querySelector('#jaw-left');
+        this.fingerRight = document.querySelector('#jaw-right');
       },
       tick: function (time) {
-        const t = time * 0.001; // Temps en secondes
+        const t = time * 0.001;
 
-        // Rotation base : -45° à +45°
-        const baseAngle = Math.sin(t * 0.8) * 45;
+        // Servo 1 (Azimut base) : balayage horizontal
+        const baseAngle = Math.sin(t * 0.7) * 50;
         this.baseJoint.setAttribute('rotation', `0 ${baseAngle} 0`);
 
-        // Articulation épaule (pitch) : -20° à +25°
-        const shoulderAngle = Math.sin(t * 1.2) * 25;
+        // Servo 2 (Épaule - Segment 1) : tangage
+        const shoulderAngle = Math.sin(t * 1.0) * 22;
         this.shoulderJoint.setAttribute('rotation', `${shoulderAngle} 0 0`);
 
-        // Articulation coude (pitch) : -30° à +35°
-        const elbowAngle = Math.cos(t * 1.1) * 35;
+        // Servo 3 (Coude - Segment 2) : extension/flexion
+        const elbowAngle = (Math.cos(t * 1.1) * 25) + 15;
         this.elbowJoint.setAttribute('rotation', `${elbowAngle} 0 0`);
 
-        // Poignet : rotation axiale
-        const wristAngle = Math.sin(t * 2.0) * 40;
-        this.wristJoint.setAttribute('rotation', `0 0 ${wristAngle}`);
+        // Servo 4 (Poignet/Pince - Segment 3) : oscillation de l'axe perpendiculaire
+        const wristTilt = Math.sin(t * 1.8) * 20;
+        this.fingerServo.setAttribute('rotation', `0 ${wristTilt} 0`);
 
-        // Pince : ouverture / fermeture cyclique
-        const gripOffset = 0.04 + Math.sin(t * 1.5) * 0.025;
-        this.fingerLeft.setAttribute('position', `${-gripOffset} 0.08 0`);
-        this.fingerRight.setAttribute('position', `${gripOffset} 0.08 0`);
+        // Pince : écartement des mors (effet doigt / pouce)
+        const jawSpan = 0.02 + Math.abs(Math.sin(t * 1.5)) * 0.035;
+        this.fingerLeft.setAttribute('position', `${-jawSpan} 0.08 0`);
+        this.fingerRight.setAttribute('position', `${jawSpan} 0.08 0`);
       }
     });
   </script>
 </head>
 <body style="margin: 0; overflow: hidden;">
-  <a-scene robot-arm-demo background="color: #1e272c">
-    
-    <!-- Caméra utilisateur (positionnée à hauteur d'yeux en retrait) -->
-    <a-entity position="0 1.2 1.8">
+  <a-scene robot-arm-demo background="color: #1a1e21">
+
+    <!-- Caméra utilisateur -->
+    <a-entity position="0 1.25 1.7">
       <a-camera look-controls="pointerLockEnabled: false"></a-camera>
     </a-entity>
 
-    <!-- Éclairages de scène -->
-    <a-entity light="type: ambient; color: #777"></a-entity>
-    <a-entity light="type: directional; color: #fff; intensity: 0.9" position="2 4 3"></a-entity>
+    <!-- Éclairage d'atelier -->
+    <a-entity light="type: ambient; color: #888"></a-entity>
+    <a-entity light="type: directional; color: #ffffff; intensity: 0.95" position="2.5 4 2.5"></a-entity>
+    <a-entity light="type: directional; color: #556; intensity: 0.4" position="-2 2 -1"></a-entity>
 
-    <!-- ==================== SURFACE INDUSTRIELLE ==================== -->
+    <!-- SURFACE INDUSTRIELLE & MARQUAGE AU SOL -->
     <a-entity position="0 0 0">
-      <!-- Dalle principale grise -->
-      <a-box position="0 0.45 0" width="1.6" height="0.9" depth="1.6" color="#3a4045" roughness="0.8"></a-box>
+      <!-- Bâti technique gris anthracite -->
+      <a-box position="0 0.425 0" width="1.6" height="0.85" depth="1.6" color="#373d43" roughness="0.85"></a-box>
       <!-- Plateau de travail supérieur -->
-      <a-box position="0 0.905 0" width="1.4" height="0.01" depth="1.4" color="#2c3136" roughness="0.6"></a-box>
+      <a-box position="0 0.855 0" width="1.36" height="0.01" depth="1.36" color="#262a2e" roughness="0.5"></a-box>
 
-      <!-- Lignes de sécurité hachurées jaune/noir (4 côtés) -->
-      <a-plane position="0 0.911 0.75" rotation="-90 0 0" width="1.6" height="0.1" hazard-texture></a-plane>
-      <a-plane position="0 0.911 -0.75" rotation="-90 180 0" width="1.6" height="0.1" hazard-texture></a-plane>
-      <a-plane position="-0.75 0.911 0" rotation="-90 90 0" width="1.6" height="0.1" hazard-texture></a-plane>
-      <a-plane position="0.75 0.911 0" rotation="-90 -90 0" width="1.6" height="0.1" hazard-texture></a-plane>
+      <!-- Bandes larges de sécurité à 45° sur les 4 rives (largeur 16 cm) -->
+      <a-plane position="0 0.862 0.72" rotation="-90 0 0" width="1.6" height="0.16" hazard-texture></a-plane>
+      <a-plane position="0 0.862 -0.72" rotation="-90 180 0" width="1.6" height="0.16" hazard-texture></a-plane>
+      <a-plane position="-0.72 0.862 0" rotation="-90 90 0" width="1.6" height="0.16" hazard-texture></a-plane>
+      <a-plane position="0.72 0.862 0" rotation="-90 -90 0" width="1.6" height="0.16" hazard-texture></a-plane>
     </a-entity>
 
-    <!-- ==================== BRAS ROBOTIQUE BLANC (4 DOF) ==================== -->
-    <!-- Positionné sur la table à Y=0.91 -->
-    <a-entity position="0 0.91 0">
+    <!-- BRAS ROBOTIQUE BLANC 4 DOF -->
+    <a-entity position="0 0.86 0">
 
-      <!-- AXE 1 : BASE (Rotation Y) -->
+      <!-- SERVO 1 : Base rotative (azimut) -->
       <a-entity id="joint-base" position="0 0 0">
-        <!-- Embase fixe & moteur azimut -->
-        <a-cylinder radius="0.14" height="0.04" position="0 0.02 0" color="#e0e0e0" roughness="0.3"></a-cylinder>
-        <a-cylinder radius="0.09" height="0.08" position="0 0.08 0" color="#ffffff" roughness="0.25"></a-cylinder>
+        <!-- Socle en cône tronqué -->
+        <a-cylinder radius-bottom="0.17" radius-top="0.10" height="0.09" position="0 0.045 0" color="#f8f9f9" roughness="0.3"></a-cylinder>
+        <!-- Couronne supérieure du servo de rotation -->
+        <a-cylinder radius="0.095" height="0.03" position="0 0.105 0" color="#e2e6ea" roughness="0.3"></a-cylinder>
 
-        <!-- AXE 2 : ÉPAULE (Pivot X à Y=0.12) -->
+        <!-- SERVO 2 : Épaule & SEGMENT 1 (Bras inférieur) -->
         <a-entity id="joint-shoulder" position="0 0.12 0">
-          <a-sphere radius="0.06" color="#d5d8dc"></a-sphere>
-          <!-- Premier membre (Humerus) -->
-          <a-box width="0.06" height="0.4" depth="0.06" position="0 0.2 0" color="#ffffff" roughness="0.25"></a-box>
+          <a-sphere radius="0.045" color="#ced4da"></a-sphere>
+          <!-- Segment 1 : corps principal -->
+          <a-box width="0.05" height="0.36" depth="0.05" position="0 0.18 0" color="#ffffff" roughness="0.25"></a-box>
 
-          <!-- AXE 3 : COUDE (Pivot X à Y=0.4 du membre précédent) -->
-          <a-entity id="joint-elbow" position="0 0.4 0">
-            <a-sphere radius="0.05" color="#d5d8dc"></a-sphere>
-            <!-- Deuxième membre (Avant-bras) -->
-            <a-box width="0.05" height="0.35" depth="0.05" position="0 0.175 0" color="#ffffff" roughness="0.25"></a-box>
+          <!-- SERVO 3 : Coude & SEGMENT 2 (Avant-bras) -->
+          <a-entity id="joint-elbow" position="0 0.36 0">
+            <a-cylinder radius="0.04" height="0.06" rotation="0 0 90" color="#ced4da"></a-cylinder>
+            <!-- Segment 2 : corps principal -->
+            <a-box width="0.04" height="0.32" depth="0.04" position="0 0.16 0" color="#ffffff" roughness="0.25"></a-box>
 
-            <!-- AXE 4 : POIGNET & PINCE (Pivot Z ou Y) -->
-            <a-entity id="joint-wrist" position="0 0.35 0">
-              <a-cylinder radius="0.035" height="0.04" position="0 0.02 0" color="#bdc3c7"></a-cylinder>
-              <a-box width="0.1" height="0.02" depth="0.03" position="0 0.05 0" color="#ffffff"></a-box>
+            <!-- SERVO 4 & SEGMENT 3 : Pince à moteur perpendiculaire -->
+            <a-entity position="0 0.32 0">
+              <!-- Bloc support terminal -->
+              <a-box width="0.045" height="0.03" depth="0.045" position="0 0.015 0" color="#e2e6ea"></a-box>
 
-              <!-- Mâchoires de la pince (ouverture symétrique) -->
-              <a-box id="finger-left" width="0.015" height="0.07" depth="0.025" position="-0.04 0.08 0" color="#e0e0e0"></a-box>
-              <a-box id="finger-right" width="0.015" height="0.07" depth="0.025" position="0.04 0.08 0" color="#e0e0e0"></a-box>
-            </a-entity>
+              <!-- Moteur de la pince orienté à 90° (perpendiculaire au segment) -->
+              <a-cylinder radius="0.025" height="0.07" rotation="0 0 90" position="0 0.045 0" color="#495057"></a-cylinder>
 
-          </a-entity> <!-- Fin Coude -->
-        </a-entity> <!-- Fin Épaule -->
-      </a-entity> <!-- Fin Base -->
+              <!-- Axe mobile commandé par le servo perpendiculaire -->
+              <a-entity id="finger-servo-axis" position="0 0.045 0">
+                <!-- Paume / Traverse de fixation -->
+                <a-box width="0.09" height="0.015" depth="0.035" position="0 0.03 0" color="#ffffff"></a-box>
+
+                <!-- Doigt gauche (index/mors fixe ou mobile) -->
+                <a-entity id="jaw-left" position="-0.035 0.07 0">
+                  <a-box width="0.012" height="0.065" depth="0.02" color="#ced4da"></a-box>
+                  <a-box width="0.012" height="0.02" depth="0.02" position="0.008 0.025 0" rotation="0 0 -25" color="#495057"></a-box>
+                </a-entity>
+
+                <!-- Doigt droit ("pouce" opposé) -->
+                <a-entity id="jaw-right" position="0.035 0.07 0">
+                  <a-box width="0.012" height="0.065" depth="0.02" color="#ced4da"></a-box>
+                  <a-box width="0.012" height="0.02" depth="0.02" position="-0.008 0.025 0" rotation="0 0 25" color="#495057"></a-box>
+                </a-entity>
+              </a-entity> <!-- Fin axe pince -->
+
+            </a-entity> <!-- Fin Segment 3 -->
+          </a-entity> <!-- Fin Segment 2 (Coude) -->
+        </a-entity> <!-- Fin Segment 1 (Épaule) -->
+      </a-entity> <!-- Fin Base conique -->
 
     </a-entity>
 
-    <!-- Sol ambiant -->
-    <a-plane position="0 0 0" rotation="-90 0 0" width="30" height="30" color="#111417" roughness="0.9"></a-plane>
+    <!-- Sol de fond -->
+    <a-plane position="0 0 0" rotation="-90 0 0" width="30" depth="30" color="#0e1113" roughness="0.95"></a-plane>
 
   </a-scene>
 </body>
